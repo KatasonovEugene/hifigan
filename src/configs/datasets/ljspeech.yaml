@@ -1,0 +1,5 @@
+train:
+  _target_: src.datasets.LJSpeechDataset
+  data_dir: "data/ljspeech"
+  max_audio_length: 23040
+  instance_transforms: ${transforms.instance_transforms.train}

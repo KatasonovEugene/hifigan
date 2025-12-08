@@ -1,8 +1,8 @@
 _target_: src.logger.WandBWriter
-project_name: "pytorch_template"
-entity: null
-run_name: "testing"
-mode: "online"
-loss_names: ["loss"] # which losses to log (useful for multi-loss tasks, s.a. GANs)
+project_name: "hifigan"
+entity: "hse_university"
+run_name: "baseline"
+mode: "offline"
+loss_names: ["adv_loss", "fm_loss", "mel_spec_loss", "gen_loss", "disc_loss"]
 log_checkpoints: False # set to True if you want to log save_dir with checkpoints to W&B
 id_length: 8 # length of the run_id

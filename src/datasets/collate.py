@@ -1,25 +1,13 @@
 import torch
 
 
-def collate_fn(dataset_items: list[dict]):
-    """
-    Collate and pad fields in the dataset items.
-    Converts individual items into a batch.
-
-    Args:
-        dataset_items (list[dict]): list of objects from
-            dataset.__getitem__.
-    Returns:
-        result_batch (dict[Tensor]): dict, containing batch-version
-            of the tensors.
-    """
-
+def train_collate_fn(dataset_items: list[dict]):
     result_batch = {}
-
-    # example of collate_fn
-    result_batch["data_object"] = torch.vstack(
-        [elem["data_object"] for elem in dataset_items]
+    result_batch["gt_audio"] = torch.nn.utils.rnn.pad_sequence(
+        [item["gt_audio"] for item in dataset_items],
+        batch_first=True,
     )
-    result_batch["labels"] = torch.tensor([elem["labels"] for elem in dataset_items])
-
+    result_batch["gt_melspec"] = result_batch["gt_audio"].clone()
+    result_batch["gt_audio"] = result_batch["gt_audio"].unsqueeze(1)
+    result_batch["sample_rate"] = dataset_items[0]["sample_rate"]
     return result_batch

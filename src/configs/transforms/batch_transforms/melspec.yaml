@@ -1,0 +1,6 @@
+train:
+  gt_melspec:
+    _target_: src.transforms.MelSpectrogram
+    config:
+      _target_: src.transforms.MelSpectrogramConfig
+inference: null

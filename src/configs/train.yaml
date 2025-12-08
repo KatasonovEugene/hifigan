@@ -1,0 +1,38 @@
+defaults:
+  - model: hifigan
+  - writer: wandb
+  - metrics: empty_metrics
+  - datasets: ljspeech
+  - dataloader: train
+  - transforms: only_batch
+  - optimizer: adamw
+  - scheduler: exponential
+  - _self_
+
+g_optimizer: ${optimizer}
+d_optimizer: ${optimizer}
+
+g_scheduler: ${scheduler}
+d_scheduler: ${scheduler}
+
+g_loss:
+  _target_: src.loss.GeneratorLoss
+  lambda_fm: 2
+  lambda_mel: 45
+d_loss:
+  _target_: src.loss.DiscriminatorLoss
+
+trainer:
+  log_step: 50
+  n_epochs: 1000
+  epoch_len: 500
+  device_tensors: ["gt_audio", "gt_melspec"]
+  resume_from: null
+  device: auto
+  override: False
+  monitor: "min gen_loss"
+  save_period: 5
+  early_stop: ${trainer.n_epochs}
+  save_dir: "saved"
+  seed: 42
+  max_grad_norm: 12

@@ -18,10 +18,10 @@ class BaseTrainer:
     def __init__(
         self,
         model,
-        criterion,
+        losses,
         metrics,
-        optimizer,
-        lr_scheduler,
+        optimizers,
+        schedulers,
         config,
         device,
         dataloaders,
@@ -67,9 +67,9 @@ class BaseTrainer:
         self.log_step = config.trainer.get("log_step", 50)
 
         self.model = model
-        self.criterion = criterion
-        self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler
+        self.g_loss, self.d_loss = losses
+        self.g_optimizer, self.d_optimizer = optimizers
+        self.g_scheduler, self.d_scheduler = schedulers
         self.batch_transforms = batch_transforms
 
         # define dataloaders
@@ -119,7 +119,8 @@ class BaseTrainer:
         self.metrics = metrics
         self.train_metrics = MetricTracker(
             *self.config.writer.loss_names,
-            "grad_norm",
+            "d_grad_norm",
+            "g_grad_norm",
             *[m.name for m in self.metrics["train"]],
             writer=self.writer,
         )
@@ -218,18 +219,25 @@ class BaseTrainer:
                 else:
                     raise e
 
-            self.train_metrics.update("grad_norm", self._get_grad_norm())
+            self.train_metrics.update("g_grad_norm", self._get_grad_norm("generator"))
+            self.train_metrics.update("d_grad_norm", self._get_grad_norm("discriminator"))
 
             # log current results
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.epoch_len + batch_idx)
                 self.logger.debug(
-                    "Train Epoch: {} {} Loss: {:.6f}".format(
-                        epoch, self._progress(batch_idx), batch["loss"].item()
+                    "Train Epoch: {} {} GeneratorLoss: {:.6f} DiscriminatorLoss: {:6f}".format(
+                        epoch,
+                        self._progress(batch_idx),
+                        batch["gen_loss"].item(),
+                        batch["disc_loss"].item(),
                     )
                 )
                 self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
+                    "g_learning_rate", self.g_scheduler.get_last_lr()[0]
+                )
+                self.writer.add_scalar(
+                    "d_learning_rate", self.d_scheduler.get_last_lr()[0]
                 )
                 self._log_scalars(self.train_metrics)
                 self._log_batch(batch_idx, batch)
@@ -239,6 +247,9 @@ class BaseTrainer:
                 self.train_metrics.reset()
             if batch_idx + 1 >= self.epoch_len:
                 break
+
+        self.d_scheduler.step()
+        self.g_scheduler.step()
 
         logs = last_train_metrics
 
@@ -373,18 +384,19 @@ class BaseTrainer:
                 )
         return batch
 
-    def _clip_grad_norm(self):
+    def _clip_grad_norm(self, model_part):
         """
         Clips the gradient norm by the value defined in
         config.trainer.max_grad_norm
         """
         if self.config["trainer"].get("max_grad_norm", None) is not None:
             clip_grad_norm_(
-                self.model.parameters(), self.config["trainer"]["max_grad_norm"]
+                getattr(self.model, model_part).parameters(),
+                self.config["trainer"]["max_grad_norm"]
             )
 
     @torch.no_grad()
-    def _get_grad_norm(self, norm_type=2):
+    def _get_grad_norm(self, model_part, norm_type=2):
         """
         Calculates the gradient norm for logging.
 
@@ -393,7 +405,7 @@ class BaseTrainer:
         Returns:
             total_norm (float): the calculated norm.
         """
-        parameters = self.model.parameters()
+        parameters = getattr(self.model, model_part).parameters()
         if isinstance(parameters, torch.Tensor):
             parameters = [parameters]
         parameters = [p for p in parameters if p.grad is not None]
@@ -467,8 +479,10 @@ class BaseTrainer:
             "arch": arch,
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
-            "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
+            "g_optimizer": self.d_optimizer.state_dict(),
+            "d_optimizer": self.g_optimizer.state_dict(),
+            "g_scheduler": self.d_scheduler.state_dict(),
+            "d_scheduler": self.g_scheduler.state_dict(),
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
@@ -522,8 +536,10 @@ class BaseTrainer:
                 "are not resumed."
             )
         else:
-            self.optimizer.load_state_dict(checkpoint["optimizer"])
-            self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+            self.g_optimizer.load_state_dict(checkpoint["g_optimizer"])
+            self.d_optimizer.load_state_dict(checkpoint["d_optimizer"])
+            self.g_scheduler.load_state_dict(checkpoint["g_scheduler"])
+            self.d_scheduler.load_state_dict(checkpoint["d_scheduler"])
 
         self.logger.info(
             f"Checkpoint loaded. Resume training from epoch {self.start_epoch}"

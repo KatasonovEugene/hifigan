@@ -3,6 +3,7 @@ import random
 from typing import List
 
 import torch
+import torchaudio
 from torch.utils.data import Dataset
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,13 @@ class BaseDataset(Dataset):
     """
 
     def __init__(
-        self, index, limit=None, shuffle_index=False, instance_transforms=None
+        self,
+        index,
+        limit=None,
+        shuffle_index=False,
+        instance_transforms=None,
+        max_audio_length=None,
+        target_sr=22050,
     ):
         """
         Args:
@@ -33,11 +40,10 @@ class BaseDataset(Dataset):
                 should be applied on the instance. Depend on the
                 tensor name.
         """
-        self._assert_index_is_valid(index)
-
         index = self._shuffle_and_limit_index(index, limit, shuffle_index)
         self._index: List[dict] = index
-
+        self.target_sr = target_sr
+        self.max_audio_length = max_audio_length
         self.instance_transforms = instance_transforms
 
     def __getitem__(self, ind):
@@ -56,11 +62,13 @@ class BaseDataset(Dataset):
                 (a single dataset element).
         """
         data_dict = self._index[ind]
-        data_path = data_dict["path"]
-        data_object = self.load_object(data_path)
-        data_label = data_dict["label"]
+        path = data_dict["audio_path"]
+        audio = self.load_audio(path)
 
-        instance_data = {"data_object": data_object, "labels": data_label}
+        instance_data = {
+            "gt_audio": audio,
+            "sample_rate": self.target_sr,
+        }
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data
@@ -71,17 +79,18 @@ class BaseDataset(Dataset):
         """
         return len(self._index)
 
-    def load_object(self, path):
-        """
-        Load object from disk.
-
-        Args:
-            path (str): path to the object.
-        Returns:
-            data_object (Tensor):
-        """
-        data_object = torch.load(path)
-        return data_object
+    def load_audio(self, path):
+        audio_tensor, sr = torchaudio.load(path)
+        audio_tensor = audio_tensor[0:1, :]
+        target_sr = self.target_sr
+        if sr != target_sr:
+            audio_tensor = torchaudio.functional.resample(audio_tensor, sr, target_sr)
+        audio_tensor = audio_tensor.squeeze(0)
+        audio_len = audio_tensor.numel()
+        if self.max_audio_length is not None and audio_len > self.max_audio_length:
+            start = random.randint(0, audio_len - self.max_audio_length + 1)
+            audio_tensor = audio_tensor[start:start + self.max_audio_length]
+        return audio_tensor
 
     def preprocess_data(self, instance_data):
         """
@@ -126,26 +135,6 @@ class BaseDataset(Dataset):
         """
         # Filter logic
         pass
-
-    @staticmethod
-    def _assert_index_is_valid(index):
-        """
-        Check the structure of the index and ensure it satisfies the desired
-        conditions.
-
-        Args:
-            index (list[dict]): list, containing dict for each element of
-                the dataset. The dict has required metadata information,
-                such as label and object path.
-        """
-        for entry in index:
-            assert "path" in entry, (
-                "Each dataset item should include field 'path'" " - path to audio file."
-            )
-            assert "label" in entry, (
-                "Each dataset item should include field 'label'"
-                " - object ground-truth label."
-            )
 
     @staticmethod
     def _sort_index(index):

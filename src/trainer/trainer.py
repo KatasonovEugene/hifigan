@@ -1,5 +1,6 @@
 from src.metrics.tracker import MetricTracker
 from src.trainer.base_trainer import BaseTrainer
+from src.logger.utils import plot_spectrogram
 
 
 class Trainer(BaseTrainer):
@@ -29,25 +30,36 @@ class Trainer(BaseTrainer):
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
-        metric_funcs = self.metrics["inference"]
-        if self.is_train:
-            metric_funcs = self.metrics["train"]
-            self.optimizer.zero_grad()
+        metric_funcs = self.metrics["train"]
+        self.g_optimizer.zero_grad()
+        self.d_optimizer.zero_grad()
 
-        outputs = self.model(**batch)
-        batch.update(outputs)
+        # optimizing discriminator
+        gen_audio = self.model(**batch)
+        batch.update(gen_audio)
 
-        all_losses = self.criterion(**batch)
-        batch.update(all_losses)
+        disc_results = self.model.discriminate(detach=True, **batch)
+        batch.update(disc_results)
 
-        if self.is_train:
-            batch["loss"].backward()  # sum of all losses is always called loss
-            self._clip_grad_norm()
-            self.optimizer.step()
-            if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
+        disc_loss = self.d_loss(**batch)
+        batch.update(disc_loss)
+        batch['disc_loss'].backward()
+        self._clip_grad_norm("discriminator")
+        self.d_optimizer.step()
 
-        # update metrics for each loss (in case of multiple losses)
+        # optimizing generator
+        disc_results = self.model.discriminate(**batch)
+        batch.update(disc_results)
+
+        melspec_transform = self.batch_transforms["train"]["gt_melspec"]
+        batch["gen_melspec"] = melspec_transform(batch["gen_audio"].squeeze(1))
+
+        gen_loss = self.g_loss(**batch)
+        batch.update(gen_loss)
+        batch['gen_loss'].backward()
+        self._clip_grad_norm("generator")
+        self.g_optimizer.step()
+
         for loss_name in self.config.writer.loss_names:
             metrics.update(loss_name, batch[loss_name].item())
 
@@ -67,13 +79,20 @@ class Trainer(BaseTrainer):
             mode (str): train or inference. Defines which logging
                 rules to apply.
         """
-        # method to log data from you batch
-        # such as audio, text or images, for example
+        self._log_spectrogram(**batch)
+        self._log_audio(**batch)
+    
+    def _log_spectrogram(self, gt_melspec, gen_melspec, **batch):
+        specs_for_plot = [
+            gt_melspec[0].detach().cpu(),
+            gen_melspec[0].detach().cpu(),
+        ]
+        names = ["gt_melspec", "gen_melspec"]
 
-        # logging scheme might be different for different partitions
-        if mode == "train":  # the method is called only every self.log_step steps
-            # Log Stuff
-            pass
-        else:
-            # Log Stuff
-            pass
+        for spec_for_lot, name in zip(specs_for_plot, names):
+            image = plot_spectrogram(spec_for_lot)
+            self.writer.add_image(name, image)
+        
+    def _log_audio(self, **batch):
+        num_audio = 3
+        self.writer.add_tf_audio_table(num_audio=num_audio, **batch)

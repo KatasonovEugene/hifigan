@@ -40,8 +40,6 @@ class WandBWriter:
         try:
             import wandb
 
-            wandb.login()
-
             self.run_id = run_id
 
             wandb.init(
@@ -219,6 +217,18 @@ class WandBWriter:
             {self._object_name(table_name): self.wandb.Table(dataframe=table)},
             step=self.step,
         )
+    
+    def add_tf_audio_table(self, num_audio, gt_audio, gen_audio, sample_rate, **batch):
+        num_audio = min(num_audio, gt_audio.shape[0])
+        audios = {}
+        for i in range(num_audio):
+            cur_gt_audio = gt_audio[i].squeeze(0).detach().cpu().numpy() 
+            cur_gen_audio = gen_audio[i].squeeze(0).detach().cpu().numpy()
+            audios[f"audio{i}"] = {
+                "gt_audio": self.wandb.Audio(cur_gt_audio, sample_rate=sample_rate),
+                "gen_audio": self.wandb.Audio(cur_gen_audio, sample_rate=sample_rate),
+            }
+        self.add_table("gt_gen_audio", pd.DataFrame.from_dict(audios, orient='index'))
 
     def add_images(self, image_names, images):
         raise NotImplementedError()

@@ -12,7 +12,7 @@ from src.utils.init_utils import set_random_seed, setup_saving_and_logging
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-@hydra.main(version_base=None, config_path="src/configs", config_name="baseline")
+@hydra.main(version_base=None, config_path="src/configs", config_name="train")
 def main(config):
     """
     Main script for training. Instantiates the model, optimizer, scheduler,
@@ -33,37 +33,34 @@ def main(config):
     else:
         device = config.trainer.device
 
-    # setup data_loader instances
-    # batch_transforms should be put on device
     dataloaders, batch_transforms = get_dataloaders(config, device)
 
-    # build model architecture, then print to console
     model = instantiate(config.model).to(device)
     logger.info(model)
 
-    # get function handles of loss and metrics
-    loss_function = instantiate(config.loss_function).to(device)
+    g_loss = instantiate(config.g_loss).to(device)
+    d_loss = instantiate(config.d_loss).to(device)
     metrics = instantiate(config.metrics)
 
-    # build optimizer, learning rate scheduler
-    trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = instantiate(config.optimizer, params=trainable_params)
-    lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    g_trainable_params = filter(lambda p: p.requires_grad, model.generator.parameters())
+    d_trainable_params = filter(lambda p: p.requires_grad, model.discriminator.parameters())
 
-    # epoch_len = number of iterations for iteration-based training
-    # epoch_len = None or len(dataloader) for epoch-based training
-    epoch_len = config.trainer.get("epoch_len")
+    g_optimizer = instantiate(config.g_optimizer, params=g_trainable_params)
+    d_optimizer = instantiate(config.d_optimizer, params=d_trainable_params)
+    
+    g_scheduler = instantiate(config.g_scheduler, optimizer=g_optimizer)
+    d_scheduler = instantiate(config.d_scheduler, optimizer=d_optimizer)
 
     trainer = Trainer(
         model=model,
-        criterion=loss_function,
+        losses=(g_loss, d_loss),
         metrics=metrics,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
+        optimizers=(g_optimizer, d_optimizer),
+        schedulers=(g_scheduler, d_scheduler),
         config=config,
         device=device,
         dataloaders=dataloaders,
-        epoch_len=epoch_len,
+        epoch_len=config.trainer.epoch_len,
         logger=logger,
         writer=writer,
         batch_transforms=batch_transforms,
