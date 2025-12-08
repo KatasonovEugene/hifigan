@@ -38,11 +38,13 @@ class MPSubDiscriminator(nn.Module):
 
         max_deg = 6 + num_layers
         out_channels = 1
-        self.proj_out = nn.Conv2d(
-            in_channels=2 ** max_deg,
-            out_channels=out_channels,
-            kernel_size=out_kernel_size,
-            padding='same',
+        self.proj_out = weight_norm(
+            nn.Conv2d(
+                in_channels=2 ** max_deg,
+                out_channels=out_channels,
+                kernel_size=out_kernel_size,
+                padding='same',
+            )
         )
 
     def forward(self, audio):

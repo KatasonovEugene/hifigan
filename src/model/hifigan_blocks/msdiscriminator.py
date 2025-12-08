@@ -37,11 +37,13 @@ class MSSubDiscriminator(nn.Module):
             for (in_chans, hidden_chans, kernel_size, stride, group, padding) in params_iterator
         ])
         out_channels = 1
-        self.proj_out = nn.Conv1d(
-            in_channels=hidden_channels[-1],
-            out_channels=out_channels,
-            kernel_size=out_kernel_size,
-            padding='same',
+        self.proj_out = normalization(
+            nn.Conv1d(
+                in_channels=hidden_channels[-1],
+                out_channels=out_channels,
+                kernel_size=out_kernel_size,
+                padding='same',
+            )
         )
 
     def forward(self, audio):
@@ -50,7 +52,7 @@ class MSSubDiscriminator(nn.Module):
         for layer in self.layers:
             feat = layer(feat)
             feats.append(feat)
-        pred = self.proj_out(feat).flatten()
+        pred = self.proj_out(feat)
         return pred, feats
 
 
