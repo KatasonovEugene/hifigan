@@ -46,33 +46,6 @@ class BaseDataset(Dataset):
         self.max_audio_length = max_audio_length
         self.instance_transforms = instance_transforms
 
-    def __getitem__(self, ind):
-        """
-        Get element from the index, preprocess it, and combine it
-        into a dict.
-
-        Notice that the choice of key names is defined by the template user.
-        However, they should be consistent across dataset getitem, collate_fn,
-        loss_function forward method, and model forward method.
-
-        Args:
-            ind (int): index in the self.index list.
-        Returns:
-            instance_data (dict): dict, containing instance
-                (a single dataset element).
-        """
-        data_dict = self._index[ind]
-        path = data_dict["audio_path"]
-        audio = self.load_audio(path)
-
-        instance_data = {
-            "gt_audio": audio,
-            "sample_rate": self.target_sr,
-        }
-        instance_data = self.preprocess_data(instance_data)
-
-        return instance_data
-
     def __len__(self):
         """
         Get length of the dataset (length of the index).
@@ -80,6 +53,8 @@ class BaseDataset(Dataset):
         return len(self._index)
 
     def load_audio(self, path):
+        if path is None:
+            return None
         audio_tensor, sr = torchaudio.load(path)
         audio_tensor = audio_tensor[0:1, :]
         target_sr = self.target_sr

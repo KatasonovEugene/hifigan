@@ -1,0 +1,13 @@
+defaults:
+  - model: tts
+  - metrics: empty
+  - datasets: text_dataset
+  - dataloader: inference
+  - transforms: only_batch
+  - _self_
+inferencer:
+  device_tensors: []
+  device: auto
+  save_path: "example"
+  seed: 1
+  from_pretrained: "saved/tts.pth"

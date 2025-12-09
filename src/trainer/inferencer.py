@@ -1,4 +1,5 @@
 import torch
+import torchaudio
 from tqdm.auto import tqdm
 
 from src.metrics.tracker import MetricTracker
@@ -126,29 +127,21 @@ class Inferencer(BaseTrainer):
             for met in self.metrics["inference"]:
                 metrics.update(met.name, met(**batch))
 
-        # Some saving logic. This is an example
-        # Use if you need to save predictions on disk
+        if "gt_melspec" in batch.keys():
+            melspec_transform = self.batch_transforms["inference"]["gt_melspec"]
+            batch["gen_melspec"] = melspec_transform(batch["gen_audio"].squeeze(1))
+            gt_melspec_path = str(self.save_path / "gt_melspec")
+            gen_melspec_path = str(self.save_path / "gen_melspec")
+            for gt_melspec, gen_melspec, filename in zip(batch["gt_melspec"], batch["gen_melspec"], batch['text_filename']):
+                filename = filename.split('.')[0] + '.pth'
+                torch.save(gt_melspec, gt_melspec_path / filename)
+                torch.save(gen_melspec, gen_melspec_path / filename)
 
-        batch_size = batch["logits"].shape[0]
-        current_id = batch_idx * batch_size
-
-        for i in range(batch_size):
-            # clone because of
-            # https://github.com/pytorch/pytorch/issues/1995
-            logits = batch["logits"][i].clone()
-            label = batch["labels"][i].clone()
-            pred_label = logits.argmax(dim=-1)
-
-            output_id = current_id + i
-
-            output = {
-                "pred_label": pred_label,
-                "label": label,
-            }
-
-            if self.save_path is not None:
-                # you can use safetensors or other lib here
-                torch.save(output, self.save_path / part / f"output_{output_id}.pth")
+        sample_rate = batch['sample_rate']
+        gen_audio_path = self.save_path / "gen_audio"
+        for gen_audio, filename in zip(batch['gen_audio'], batch['text_filename']):
+            path = gen_audio_path / filename 
+            torchaudio.save(path, gen_audio, sample_rate)
 
         return batch
 

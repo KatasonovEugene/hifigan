@@ -1,0 +1,7 @@
+_target_: torch.utils.data.DataLoader
+batch_size: 1
+num_workers: 1
+pin_memory: True
+collate_fn:
+  _partial_: True
+  _target_: src.datasets.inference_collate_fn

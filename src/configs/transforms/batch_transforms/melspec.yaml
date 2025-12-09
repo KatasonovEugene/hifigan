@@ -3,4 +3,8 @@ train:
     _target_: src.transforms.MelSpectrogram
     config:
       _target_: src.transforms.MelSpectrogramConfig
-inference: null
+inference:
+  gt_melspec:
+    _target_: src.transforms.MelSpectrogram
+    config:
+      _target_: src.transforms.MelSpectrogramConfig

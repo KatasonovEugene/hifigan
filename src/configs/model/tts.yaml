@@ -1,0 +1,40 @@
+acoustic_model:
+  _target_: src.model.Tacotron2MelGenerator
+
+vocoder:
+  _target_: src.model.HiFiGAN
+
+  generator:
+    _target_: src.model.Generator
+    in_channels: 80
+    hidden_channels: 512
+    proj_in_kernel_size: 7
+    proj_out_kernel_size: 7
+    upsample_kernel_sizes: [16, 16, 4, 4]
+    mrf_kernel_sizes: [3, 7, 11]
+    mrf_dilations: [[[1, 1], [3, 1], [5, 1]], [[1, 1], [3, 1], [5, 1]], [[1, 1], [3, 1], [5, 1]]]
+    relu_alpha: 0.1
+
+  discriminator:
+    _target_: src.model.Discriminator
+
+    mpdiscriminator:
+      _target_: src.model.MPDiscriminator
+      periods: [2, 3, 5, 7, 11]
+      num_layers: 4
+      kernel_size: [5, 1]
+      stride: [3, 1]
+      padding: [2, 0]
+      out_kernel_size: [3, 1]
+      relu_alpha: 0.1
+
+    msdiscriminator:
+      _target_: src.model.MSDiscriminator
+      in_channels: [1, 16, 64, 256, 1024, 1024]
+      hidden_channels: [16, 64, 256, 1024, 1024, 1024]
+      kernel_sizes: [15, 41, 41, 41, 41, 5]
+      strides: [1, 4, 4, 4, 4, 1]
+      groups: [1, 4, 16, 64, 256, 1]
+      paddings: ['same', 20, 20, 20, 20, 'same']
+      relu_alpha: 0.1
+      out_kernel_size: 3

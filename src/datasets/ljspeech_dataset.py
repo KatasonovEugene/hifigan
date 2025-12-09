@@ -1,5 +1,4 @@
 import csv
-import torchaudio
 
 from src.datasets.base_dataset import BaseDataset
 from src.utils.io_utils import ROOT_PATH, read_json, write_json
@@ -33,3 +32,16 @@ class LJSpeechDataset(BaseDataset):
                 })
         write_json(index, str(self.index_path))
         return index
+
+    def __getitem__(self, ind):
+        data_dict = self._index[ind]
+        path = data_dict["audio_path"]
+        audio = self.load_audio(path)
+
+        instance_data = {
+            "gt_audio": audio,
+            "sample_rate": self.target_sr,
+        }
+        instance_data = self.preprocess_data(instance_data)
+
+        return instance_data

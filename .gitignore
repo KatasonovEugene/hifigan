@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 a.ipynb
 run.sh
+sync_wandb_logs.sh
+test_data
 
 # C extensions
 *.so
