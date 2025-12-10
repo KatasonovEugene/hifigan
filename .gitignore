@@ -6,7 +6,6 @@ a.ipynb
 run.sh
 sync_wandb_logs.sh
 test_data
-scripts
 delete.sh
 
 # C extensions

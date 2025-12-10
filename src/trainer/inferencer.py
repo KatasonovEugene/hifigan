@@ -197,4 +197,4 @@ class Inferencer(BaseTrainer):
             self.writer.add_image(name, image)
         
     def _log_audio(self, audio_name, gen_audio, sample_rate):
-        self.writer.add_audio(self, audio_name, gen_audio, sample_rate)
+        self.writer.add_audio(audio_name, gen_audio, sample_rate)
