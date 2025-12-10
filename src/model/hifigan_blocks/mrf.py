@@ -1,15 +1,6 @@
 import torch.nn as nn
 
 
-class ResidualConnection(nn.Module):
-    def __init__(self, module):
-        super().__init__()
-        self.module = module
-
-    def forward(self, x):
-        return self.module(x) + x
-
-
 class ResBlock(nn.Module):
     def __init__(
         self,
@@ -21,17 +12,15 @@ class ResBlock(nn.Module):
         super().__init__()
         self.layers = nn.ModuleList([
             nn.Sequential(*[
-                ResidualConnection(
-                    nn.Sequential(
-                        nn.LeakyReLU(relu_alpha),
-                        nn.Conv1d(
-                            in_channels=in_channels,
-                            out_channels=in_channels,
-                            kernel_size=kernel_size,
-                            dilation=dilation,
-                            padding='same',
-                        ),
-                    )
+                nn.Sequential(
+                    nn.LeakyReLU(relu_alpha),
+                    nn.Conv1d(
+                        in_channels=in_channels,
+                        out_channels=in_channels,
+                        kernel_size=kernel_size,
+                        dilation=dilation,
+                        padding='same',
+                    ),
                 )
                 for dilation in dilation_list
             ])

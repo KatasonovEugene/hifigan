@@ -60,14 +60,17 @@ class Inferencer(BaseTrainer):
         self.model = model
         self.batch_transforms = batch_transforms
 
-        # define dataloaders
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items()}
 
-        # path definition
-
         self.save_path = save_path
+        self.gt_melspec_path = self.save_path / "gt_melspec"
+        self.gen_melspec_path = self.save_path / "gen_melspec"
+        self.gen_audio_path = self.save_path / "gen_audio"
 
-        # define metrics
+        self.gt_melspec_path.mkdir(exist_ok=True, parents=True)
+        self.gen_melspec_path.mkdir(exist_ok=True, parents=True)
+        self.gen_audio_path.mkdir(exist_ok=True, parents=True)
+
         self.metrics = metrics
         if self.metrics is not None:
             self.evaluation_metrics = MetricTracker(
@@ -78,7 +81,6 @@ class Inferencer(BaseTrainer):
             self.evaluation_metrics = None
 
         if not skip_model_load:
-            # init model
             self._from_pretrained(config.inferencer.get("from_pretrained"))
 
     def run_inference(self):
@@ -130,17 +132,16 @@ class Inferencer(BaseTrainer):
         if "gt_melspec" in batch.keys():
             melspec_transform = self.batch_transforms["inference"]["gt_melspec"]
             batch["gen_melspec"] = melspec_transform(batch["gen_audio"].squeeze(1))
-            gt_melspec_path = str(self.save_path / "gt_melspec")
-            gen_melspec_path = str(self.save_path / "gen_melspec")
+            
             for gt_melspec, gen_melspec, filename in zip(batch["gt_melspec"], batch["gen_melspec"], batch['text_filename']):
                 filename = filename.split('.')[0] + '.pth'
-                torch.save(gt_melspec, gt_melspec_path / filename)
-                torch.save(gen_melspec, gen_melspec_path / filename)
+                torch.save(gt_melspec, str(self.gt_melspec_path / filename))
+                torch.save(gen_melspec, str(self.gen_melspec_path / filename))
 
         sample_rate = batch['sample_rate']
-        gen_audio_path = self.save_path / "gen_audio"
         for gen_audio, filename in zip(batch['gen_audio'], batch['text_filename']):
-            path = gen_audio_path / filename 
+            filename = filename.split('.')[0] + '.wav'
+            path = self.gen_audio_path / filename 
             torchaudio.save(path, gen_audio, sample_rate)
 
         return batch

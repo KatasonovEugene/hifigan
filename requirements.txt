@@ -19,3 +19,4 @@ pre-commit
 wget
 gdown
 wldhx.yadisk-direct
+deep-phonemizer

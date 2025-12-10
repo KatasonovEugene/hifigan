@@ -17,4 +17,4 @@ class TTS(nn.Module):
     def forward(self, text, **batch):
         melspec = self.acoustic_model(text)
         gen_audio = self.vocoder(melspec)
-        return {"gen_audio": gen_audio}
+        return gen_audio

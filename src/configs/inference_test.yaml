@@ -1,6 +1,6 @@
 defaults:
   - model: hifigan
-  - metrics: empty
+  - metrics: empty_metrics
   - datasets: text_dataset
   - dataloader: inference
   - transforms: only_batch
@@ -8,6 +8,6 @@ defaults:
 inferencer:
   device_tensors: ["gt_audio", "gt_melspec"]
   device: auto
-  save_path: "example"
+  save_path: "inference_result/test"
   seed: 1
-  from_pretrained: "saved/hifigan.pth"
+  from_pretrained: "saved/model_best.pth"

@@ -22,13 +22,14 @@ class TextDataset(BaseDataset):
         self.data_dir.mkdir(exist_ok=True, parents=True)
         index = []
         text_dir = self.data_dir / "transcriptions"
-        wav_dir = self.data_dir / "wavs"
+        wav_dir = self.data_dir / "gt_audio"
         for file in text_dir.iterdir():
             text = file.read_text()
             name = file.stem
             wav_name = name + '.wav'
+            audio_path = None
             if wav_dir.exists():
-                wav_files = wav_dir.glob(wav_name)
+                wav_files = list(wav_dir.glob(wav_name))
                 if len(wav_files) == 0:
                     audio_path = None
                 else:

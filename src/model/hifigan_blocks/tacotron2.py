@@ -7,6 +7,7 @@ import torch.nn as nn
 
 class Tacotron2MelGenerator(nn.Module):
     def __init__(self):
+        super().__init__()
         bundle = torchaudio.pipelines.TACOTRON2_WAVERNN_PHONE_LJSPEECH
         self.text_processor = bundle.get_text_processor()
         self.tacotron2 = bundle.get_tacotron2()
