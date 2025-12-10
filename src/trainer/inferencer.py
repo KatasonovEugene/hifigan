@@ -145,7 +145,7 @@ class Inferencer(BaseTrainer):
         for gen_audio, filename in zip(batch['gen_audio'], batch['text_filename']):
             filename = filename.split('.')[0] + '.wav'
             path = self.gen_audio_path / filename 
-            torchaudio.save(path, gen_audio, sample_rate)
+            torchaudio.save(path, gen_audio.detach().cpu(), sample_rate)
 
         return batch
 
