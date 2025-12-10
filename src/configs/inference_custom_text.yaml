@@ -1,9 +1,9 @@
 defaults:
   - model: tts
   - metrics: empty_metrics
-  - datasets: text_dataset
+  - datasets: custom_text
   - dataloader: inference
-  - transforms: empty_transforms
+  - transforms: only_batch
   - _self_
 inferencer:
   device_tensors: []

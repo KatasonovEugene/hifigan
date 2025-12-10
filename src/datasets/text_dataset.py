@@ -6,15 +6,25 @@ class TextDataset(BaseDataset):
     def __init__(
         self,
         data_dir,
+        custom_text,
         **kwargs,
     ):
-        self.data_dir = ROOT_PATH / data_dir
-        self.index_path = self.data_dir / f"inference_index.json"
-
-        if self.index_path.exists():
-            index = read_json(str(self.index_path))
+        if custom_text is not None:
+            index = [
+                {
+                    "text": custom_text,
+                    "text_filename": "custom_text_audio",
+                    "audio_path": None,
+                }
+            ]
         else:
-            index = self._create_index()
+            self.data_dir = ROOT_PATH / data_dir
+            self.index_path = self.data_dir / f"inference_index.json"
+
+            if self.index_path.exists():
+                index = read_json(str(self.index_path))
+            else:
+                index = self._create_index()
 
         super().__init__(index, **kwargs)
 
@@ -50,11 +60,14 @@ class TextDataset(BaseDataset):
         audio = self.load_audio(audio_path)
 
         instance_data = {
-            "gt_audio": audio,
-            "sample_rate": self.target_sr,
             "text": text,
             "text_filename": text_filename,
+            "sample_rate": self.target_sr,
         }
+        if audio is not None:
+            instance_data.update({
+                "gt_audio": audio,
+            })
         instance_data = self.preprocess_data(instance_data)
 
         return instance_data

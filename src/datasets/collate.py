@@ -22,6 +22,7 @@ def inference_collate_fn(dataset_items: list[dict]):
         )
         result_batch["gt_melspec"] = result_batch["gt_audio"].clone()
         result_batch["gt_audio"] = result_batch["gt_audio"].unsqueeze(1)
+
     result_batch["sample_rate"] = dataset_items[0]["sample_rate"]
     result_batch["text"] = [item["text"] for item in dataset_items]
     result_batch["text_filename"] = [item["text_filename"] for item in dataset_items]

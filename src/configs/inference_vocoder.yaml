@@ -8,6 +8,6 @@ defaults:
 inferencer:
   device_tensors: ["gt_audio", "gt_melspec"]
   device: auto
-  save_path: "inference_result/test"
+  save_path: "inference_result/vocoder"
   seed: 1
   from_pretrained: "saved/model_best.pth"

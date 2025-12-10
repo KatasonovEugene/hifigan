@@ -1,4 +1,5 @@
 test:
   _target_: src.datasets.TextDataset
   data_dir: "data/test_data"
+  custom_text: null
   instance_transforms: ${transforms.instance_transforms.inference}
