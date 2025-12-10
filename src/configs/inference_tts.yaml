@@ -4,6 +4,7 @@ defaults:
   - datasets: text_dataset
   - dataloader: inference
   - transforms: empty_transforms
+  - writer: wandb
   - _self_
 inferencer:
   device_tensors: []
@@ -11,3 +12,4 @@ inferencer:
   save_path: "inference_result/tts"
   seed: 1
   from_pretrained: "saved/tts_model_best.pth"
+  wandb_logging: False

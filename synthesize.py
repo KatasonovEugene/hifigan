@@ -37,6 +37,11 @@ def main(config):
     save_path = ROOT_PATH / "data" / config.inferencer.save_path
     save_path.mkdir(exist_ok=True, parents=True)
 
+    if config.inferencer.wandb_logging:
+        writer = instantiate(config.writer, project_config=None)
+    else:
+        writer = None
+
     inferencer = Inferencer(
         model=model,
         config=config,
@@ -46,6 +51,7 @@ def main(config):
         save_path=save_path,
         metrics=metrics,
         skip_model_load=False,
+        writer=writer,
     )
 
     logs = inferencer.run_inference()

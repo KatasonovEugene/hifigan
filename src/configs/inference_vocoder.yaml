@@ -4,6 +4,7 @@ defaults:
   - datasets: text_dataset
   - dataloader: inference
   - transforms: only_batch
+  - writer: wandb
   - _self_
 inferencer:
   device_tensors: ["gt_audio", "gt_melspec"]
@@ -11,3 +12,4 @@ inferencer:
   save_path: "inference_result/vocoder"
   seed: 1
   from_pretrained: "saved/model_best.pth"
+  wandb_logging: False

@@ -24,11 +24,13 @@ class LJSpeechDataset(BaseDataset):
         self.data_dir.mkdir(exist_ok=True, parents=True)
         index = []
         with open(self.data_dir / "metadata.csv", "r") as metadata_file:
-            for file, _, _ in csv.reader(metadata_file, delimiter='|', quotechar='|'):
+            for file, text, _ in csv.reader(metadata_file, delimiter='|', quotechar='|'):
                 file += '.wav'
                 audio_path = str(self.data_dir / "wavs" / file)
                 index.append({
                     'audio_path': audio_path,
+                    'text_filename': file,
+                    'text': text,
                 })
         write_json(index, str(self.index_path))
         return index
@@ -41,6 +43,8 @@ class LJSpeechDataset(BaseDataset):
         instance_data = {
             "gt_audio": audio,
             "sample_rate": self.target_sr,
+            "text_filename": data_dict["text_filename"],
+            "text": data_dict["text"],
         }
         instance_data = self.preprocess_data(instance_data)
 

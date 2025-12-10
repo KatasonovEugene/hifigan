@@ -13,7 +13,6 @@ class WandBWriter:
 
     def __init__(
         self,
-        logger,
         project_config,
         project_name,
         entity=None,
@@ -55,7 +54,7 @@ class WandBWriter:
             self.wandb = wandb
 
         except ImportError:
-            logger.warning("For use wandb install it via \n\t pip install wandb")
+            pass
 
         self.step = 0
         # the mode is usually equal to the current partition name

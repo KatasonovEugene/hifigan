@@ -4,6 +4,7 @@ from tqdm.auto import tqdm
 
 from src.metrics.tracker import MetricTracker
 from src.trainer.base_trainer import BaseTrainer
+from src.logger.utils import plot_spectrogram
 
 
 class Inferencer(BaseTrainer):
@@ -25,6 +26,7 @@ class Inferencer(BaseTrainer):
         metrics=None,
         batch_transforms=None,
         skip_model_load=False,
+        writer=None,
     ):
         """
         Initialize the Inferencer.
@@ -54,6 +56,8 @@ class Inferencer(BaseTrainer):
 
         self.config = config
         self.cfg_trainer = self.config.inferencer
+        self.wandb_logging = self.cfg_trainer.wandb_logging
+        self.writer = writer 
 
         self.device = device
 
@@ -63,12 +67,7 @@ class Inferencer(BaseTrainer):
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items()}
 
         self.save_path = save_path
-        self.gt_melspec_path = self.save_path / "gt_melspec"
-        self.gen_melspec_path = self.save_path / "gen_melspec"
         self.gen_audio_path = self.save_path / "gen_audio"
-
-        self.gt_melspec_path.mkdir(exist_ok=True, parents=True)
-        self.gen_melspec_path.mkdir(exist_ok=True, parents=True)
         self.gen_audio_path.mkdir(exist_ok=True, parents=True)
 
         self.metrics = metrics
@@ -129,16 +128,20 @@ class Inferencer(BaseTrainer):
             for met in self.metrics["inference"]:
                 metrics.update(met.name, met(**batch))
 
-        if "gt_melspec" in batch.keys():
+        sample_rate = batch['sample_rate']
+        if self.wandb_logging and "gt_melspec" in batch.keys():
             melspec_transform = self.batch_transforms["inference"]["gt_melspec"]
             batch["gen_melspec"] = melspec_transform(batch["gen_audio"].squeeze(1))
             
             for gt_melspec, gen_melspec, filename in zip(batch["gt_melspec"], batch["gen_melspec"], batch['text_filename']):
-                filename = filename.split('.')[0] + '.pth'
-                torch.save(gt_melspec, str(self.gt_melspec_path / filename))
-                torch.save(gen_melspec, str(self.gen_melspec_path / filename))
+                name = filename.split('.')[0]
+                self._log_spectrogram(name, gt_melspec, gen_melspec)
 
-        sample_rate = batch['sample_rate']
+            for gt_audio, gen_audio, filename in zip(batch['gt_audio'], batch['gen_audio'], batch['text_filename']):
+                name = filename.split('.')[0]
+                self._log_audio("gt_audio_" + name, gt_audio, sample_rate)
+                self._log_audio("gen_audio_" + name, gen_audio, sample_rate)
+
         for gen_audio, filename in zip(batch['gen_audio'], batch['text_filename']):
             filename = filename.split('.')[0] + '.wav'
             path = self.gen_audio_path / filename 
@@ -180,3 +183,18 @@ class Inferencer(BaseTrainer):
                 )
 
         return self.evaluation_metrics.result()
+
+    def _log_spectrogram(self, glob_name, gt_melspec, gen_melspec):
+        specs_for_plot = [
+            gt_melspec.detach().cpu(),
+            gen_melspec.detach().cpu(),
+        ]
+        names = ["gt_melspec", "gen_melspec"]
+
+        for spec_for_lot, name in zip(specs_for_plot, names):
+            name = glob_name + name
+            image = plot_spectrogram(spec_for_lot)
+            self.writer.add_image(name, image)
+        
+    def _log_audio(self, audio_name, gen_audio, sample_rate):
+        self.writer.add_audio(self, audio_name, gen_audio, sample_rate)
